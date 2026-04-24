@@ -1,17 +1,16 @@
-State   | ACTION                        | GOTO                 
-        | $     | *     | =     | id    | L     | R     | Start
---------+-----------------------------------+--------------------------
-I0      |       | s1    |       | s2    | 3     | 4     | 5    
-I1      |       | s1    |       | s2    | 6     | 7     |      
-I2      | r4    |       | r4    |       |       |       |      
-I3      | r5    |       | s8    |       |       |       |      
-I4      | r2    |       |       |       |       |       |      
-I5      | acc   |       |       |       |       |       |      
-I6      | r5    |       | r5    |       |       |       |      
-I7      | r3    |       | r3    |       |       |       |      
-I8      |       | s9    |       | s10   | 11    | 12    |      
-I9      |       | s9    |       | s10   | 11    | 13    |      
-I10     | r4    |       |       |       |       |       |      
-I11     | r5    |       |       |       |       |       |      
-I12     | r1    |       |       |       |       |       |      
-I13     | r3    |       |       |       |       |       |      
+State   | ACTION                        | GOTO 
+        | $     | *     | +     | id    | Expr 
+--------+-----------------------------------+----------
+I0      |       |       |       | s1    | 2    
+I1      | r3    | r3    | r3    |       |      
+I2      | acc   | s3    | s4    |       |      
+I3      |       |       |       | s1    | 5    
+I4      |       |       |       | s1    | 6    
+I5      | r2    | s3    | s4    |       |      
+I6      | r1    | s3    | s4    |       |      
+
+CONFLICTS:
+State I5, on terminal '*': s3 vs r2
+State I5, on terminal '+': s4 vs r2
+State I6, on terminal '*': s3 vs r1
+State I6, on terminal '+': s4 vs r1

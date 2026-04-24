@@ -1,8 +1,6 @@
-Start: Start
-AugmentedStart: StartPrime
-0: StartPrime -> Start
-1: Start -> L = R
-2: Start -> R
-3: L -> * R
-4: L -> id
-5: R -> L
+Start: Expr
+AugmentedStart: ExprPrime
+0: ExprPrime -> Expr
+1: Expr -> Expr + Expr
+2: Expr -> Expr * Expr
+3: Expr -> id

@@ -1,10 +1,13 @@
 Step | Stack                                    | Input                        | Action                      
 -----+------------------------------------------+------------------------------+-----------------------------
-1    | 0                                        | id = id $                    | shift 2                     
-2    | 0 id 2                                   | = id $                       | reduce L -> id              
-3    | 0 L 3                                    | = id $                       | shift 8                     
-4    | 0 L 3 = 8                                | id $                         | shift 10                    
-5    | 0 L 3 = 8 id 10                          | $                            | reduce L -> id              
-6    | 0 L 3 = 8 L 11                           | $                            | reduce R -> L               
-7    | 0 L 3 = 8 R 12                           | $                            | reduce Start -> L = R       
-8    | 0 Start 5                                | $                            | accept                      
+1    | 0                                        | id + id * id $               | shift 1                     
+2    | 0 id 1                                   | + id * id $                  | reduce Expr -> id           
+3    | 0 Expr 2                                 | + id * id $                  | shift 4                     
+4    | 0 Expr 2 + 4                             | id * id $                    | shift 1                     
+5    | 0 Expr 2 + 4 id 1                        | * id $                       | reduce Expr -> id           
+6    | 0 Expr 2 + 4 Expr 6                      | * id $                       | shift 3                     
+7    | 0 Expr 2 + 4 Expr 6 * 3                  | id $                         | shift 1                     
+8    | 0 Expr 2 + 4 Expr 6 * 3 id 1             | $                            | reduce Expr -> id           
+9    | 0 Expr 2 + 4 Expr 6 * 3 Expr 5           | $                            | reduce Expr -> Expr * Expr  
+10   | 0 Expr 2 + 4 Expr 6                      | $                            | reduce Expr -> Expr + Expr  
+11   | 0 Expr 2                                 | $                            | accept                      

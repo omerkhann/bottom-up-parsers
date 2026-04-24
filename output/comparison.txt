@@ -1,0 +1,19 @@
+Bottom-Up Parser Suite Performance Comparison
+Grammar: input/ambiguous_expr.txt
+Input tokens: id + id * id
+
+Metric                       |         SLR(1) |          LR(1)
+-----------------------------+----------------+---------------
+Number of states             |              7 |              7
+Conflicts                    |              4 |              4
+ACTION entries               |             15 |             15
+GOTO entries                 |              3 |              3
+Total table entries          |             18 |             18
+Approx table bytes           |            132 |            132
+Table build time (ms)        |          0.105 |          0.161
+Parse time (ms)              |          6.535 |          2.856
+Parse throughput (iters/s)   |        45904.0 |       105046.6
+
+Notes:
+- "Approx table bytes" is a rough estimate (excludes map/node overhead).
+- Parse timing runs multiple iterations for stability.

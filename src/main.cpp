@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <chrono>
 
 using cc::Grammar;
 
@@ -94,6 +95,71 @@ static void PrintComparison(const cc::ParserBuildResult& slr, const cc::ParserBu
             << " | " << std::left << std::setw(colW) << lr1.table.Conflicts().size() << "\n";
 }
 
+struct PerfRow {
+  size_t states = 0;
+  size_t conflicts = 0;
+  size_t actionEntries = 0;
+  size_t gotoEntries = 0;
+  size_t approxBytes = 0;
+  double buildMs = 0.0;
+  double parseMs = 0.0;
+  double parseIters = 0.0;
+};
+
+static std::string ComparisonTxt(const std::string& grammarPath, const std::string& tokensStr, const PerfRow& slr,
+                                 const PerfRow& lr1) {
+  auto row = [&](std::ostringstream& out, const std::string& label, const std::string& a, const std::string& b) {
+    out << std::left << std::setw(28) << label << " | " << std::right << std::setw(14) << a << " | " << std::right
+        << std::setw(14) << b << "\n";
+  };
+
+  std::ostringstream out;
+  out << "Bottom-Up Parser Suite Performance Comparison\n";
+  out << "Grammar: " << grammarPath << "\n";
+  out << "Input tokens: " << tokensStr << "\n\n";
+
+  out << std::left << std::setw(28) << "Metric"
+      << " | " << std::right << std::setw(14) << "SLR(1)"
+      << " | " << std::right << std::setw(14) << "LR(1)" << "\n";
+  out << std::string(28, '-') << "-+-" << std::string(14, '-') << "-+-" << std::string(14, '-') << "\n";
+
+  row(out, "Number of states", std::to_string(slr.states), std::to_string(lr1.states));
+  row(out, "Conflicts", std::to_string(slr.conflicts), std::to_string(lr1.conflicts));
+  row(out, "ACTION entries", std::to_string(slr.actionEntries), std::to_string(lr1.actionEntries));
+  row(out, "GOTO entries", std::to_string(slr.gotoEntries), std::to_string(lr1.gotoEntries));
+  row(out, "Total table entries", std::to_string(slr.actionEntries + slr.gotoEntries),
+      std::to_string(lr1.actionEntries + lr1.gotoEntries));
+  row(out, "Approx table bytes", std::to_string(slr.approxBytes), std::to_string(lr1.approxBytes));
+
+  {
+    std::ostringstream a, b;
+    a << std::fixed << std::setprecision(3) << slr.buildMs;
+    b << std::fixed << std::setprecision(3) << lr1.buildMs;
+    row(out, "Table build time (ms)", a.str(), b.str());
+  }
+
+  {
+    std::ostringstream a, b;
+    a << std::fixed << std::setprecision(3) << slr.parseMs;
+    b << std::fixed << std::setprecision(3) << lr1.parseMs;
+    row(out, "Parse time (ms)", a.str(), b.str());
+  }
+
+  if (slr.parseIters > 0 && lr1.parseIters > 0) {
+    std::ostringstream a, b;
+    const double slrPerSec = (slr.parseIters * 1000.0) / std::max(0.001, slr.parseMs);
+    const double lr1PerSec = (lr1.parseIters * 1000.0) / std::max(0.001, lr1.parseMs);
+    a << std::fixed << std::setprecision(1) << slrPerSec;
+    b << std::fixed << std::setprecision(1) << lr1PerSec;
+    row(out, "Parse throughput (iters/s)", a.str(), b.str());
+  }
+
+  out << "\nNotes:\n";
+  out << "- \"Approx table bytes\" is a rough estimate (excludes map/node overhead).\n";
+  out << "- Parse timing runs multiple iterations for stability.\n";
+  return out.str();
+}
+
 static void Usage() {
   std::cout << "Usage:\n"
             << "  ./parser --grammar input/<file>.txt --tokens \"tok1 tok2 ...\" [--outdir output]\n"
@@ -140,17 +206,21 @@ int main(int argc, char** argv) {
 
     // Build SLR(1)
     cc::SLRParserBuilder slr(g);
+    const auto t0 = std::chrono::steady_clock::now();
     auto slrRes = slr.Build();
+    const auto t1 = std::chrono::steady_clock::now();
     WriteFile(outDir + "/slr_items.txt", ItemSetsToString(g, slrRes.collection));
     WriteFile(outDir + "/slr_parsing_table.txt", slrRes.table.ToString());
-    WriteFile(outDir + "/slr_parsing_table_pretty.txt", slrRes.table.ToString());
+    // WriteFile(outDir + "/slr_parsing_table_pretty.txt", slrRes.table.ToString());
 
     // Build LR(1)
     cc::LR1ParserBuilder lr1(g);
+    const auto t2 = std::chrono::steady_clock::now();
     auto lr1Res = lr1.Build();
+    const auto t3 = std::chrono::steady_clock::now();
     WriteFile(outDir + "/lr1_items.txt", ItemSetsToString(g, lr1Res.collection));
     WriteFile(outDir + "/lr1_parsing_table.txt", lr1Res.table.ToString());
-    WriteFile(outDir + "/lr1_parsing_table_pretty.txt", lr1Res.table.ToString());
+    // WriteFile(outDir + "/lr1_parsing_table_pretty.txt", lr1Res.table.ToString());
 
     PrintComparison(slrRes, lr1Res);
 
@@ -170,6 +240,38 @@ int main(int argc, char** argv) {
     cc::ShiftReduceParser parserSLR(g, slrRes.table);
     auto parseSLR = parserSLR.Parse(tokens);
     WriteFile(outDir + "/slr_trace.txt", TraceToString(parseSLR.trace));
+
+    // Performance comparison (timing + sizes) to output/comparison.txt
+    // Parse timing uses multiple iterations for a stable wall-clock.
+    auto timeParse = [&](const cc::ShiftReduceParser& p, int iters) -> double {
+      const auto a = std::chrono::steady_clock::now();
+      for (int i = 0; i < iters; ++i) (void)p.Parse(tokens);
+      const auto b = std::chrono::steady_clock::now();
+      return std::chrono::duration<double, std::milli>(b - a).count();
+    };
+
+    const int parseIters = 300;
+    PerfRow slrPerf;
+    slrPerf.states = slrRes.collection.states.size();
+    slrPerf.conflicts = slrRes.table.Conflicts().size();
+    slrPerf.actionEntries = slrRes.table.ActionEntryCount();
+    slrPerf.gotoEntries = slrRes.table.GotoEntryCount();
+    slrPerf.approxBytes = slrRes.table.ApproxBytes();
+    slrPerf.buildMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    slrPerf.parseMs = timeParse(parserSLR, parseIters);
+    slrPerf.parseIters = parseIters;
+
+    PerfRow lr1Perf;
+    lr1Perf.states = lr1Res.collection.states.size();
+    lr1Perf.conflicts = lr1Res.table.Conflicts().size();
+    lr1Perf.actionEntries = lr1Res.table.ActionEntryCount();
+    lr1Perf.gotoEntries = lr1Res.table.GotoEntryCount();
+    lr1Perf.approxBytes = lr1Res.table.ApproxBytes();
+    lr1Perf.buildMs = std::chrono::duration<double, std::milli>(t3 - t2).count();
+    lr1Perf.parseMs = timeParse(parserLR1, parseIters);
+    lr1Perf.parseIters = parseIters;
+
+    WriteFile(outDir + "/comparison.txt", ComparisonTxt(grammarPath, tokensStr, slrPerf, lr1Perf));
 
     std::cout << "\nOutputs written to " << outDir << "/\n";
     return 0;

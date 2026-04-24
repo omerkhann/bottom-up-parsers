@@ -40,6 +40,14 @@ public:
   std::set<std::string> ActionColumns() const;
   std::set<std::string> GotoColumns() const;
 
+  // Stats for comparison/performance report.
+  size_t ActionEntryCount() const { return action_.size(); }
+  size_t GotoEntryCount() const { return goTo_.size(); }
+  size_t TotalEntryCount() const { return action_.size() + goTo_.size(); }
+
+  // Rough estimate (not exact allocator usage).
+  size_t ApproxBytes() const { return action_.size() * sizeof(Action) + goTo_.size() * sizeof(int); }
+
   std::string ToString() const;
 
 private:

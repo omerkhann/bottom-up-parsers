@@ -1,42 +1,36 @@
 I0:
-  StartPrime -> · Start
-  Start -> · L = R
-  Start -> · R
-  L -> · * R
-  L -> · id
-  R -> · L
+  ExprPrime -> · Expr
+  Expr -> · Expr + Expr
+  Expr -> · Expr * Expr
+  Expr -> · id
 
 I1:
-  L -> · * R
-  L -> * · R
-  L -> · id
-  R -> · L
+  Expr -> id ·
 
 I2:
-  L -> id ·
+  ExprPrime -> Expr ·
+  Expr -> Expr · + Expr
+  Expr -> Expr · * Expr
 
 I3:
-  Start -> L · = R
-  R -> L ·
+  Expr -> · Expr + Expr
+  Expr -> · Expr * Expr
+  Expr -> Expr * · Expr
+  Expr -> · id
 
 I4:
-  Start -> R ·
+  Expr -> · Expr + Expr
+  Expr -> Expr + · Expr
+  Expr -> · Expr * Expr
+  Expr -> · id
 
 I5:
-  StartPrime -> Start ·
+  Expr -> Expr · + Expr
+  Expr -> Expr · * Expr
+  Expr -> Expr * Expr ·
 
 I6:
-  R -> L ·
-
-I7:
-  L -> * R ·
-
-I8:
-  Start -> L = · R
-  L -> · * R
-  L -> · id
-  R -> · L
-
-I9:
-  Start -> L = R ·
+  Expr -> Expr · + Expr
+  Expr -> Expr + Expr ·
+  Expr -> Expr · * Expr
 
