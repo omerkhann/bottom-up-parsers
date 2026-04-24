@@ -1,0 +1,10 @@
+Step | Stack                                    | Input                        | Action                      
+-----+------------------------------------------+------------------------------+-----------------------------
+1    | 0                                        | id = id $                    | shift 2                     
+2    | 0 id 2                                   | = id $                       | reduce L -> id              
+3    | 0 L 3                                    | = id $                       | shift 8                     
+4    | 0 L 3 = 8                                | id $                         | shift 10                    
+5    | 0 L 3 = 8 id 10                          | $                            | reduce L -> id              
+6    | 0 L 3 = 8 L 11                           | $                            | reduce R -> L               
+7    | 0 L 3 = 8 R 12                           | $                            | reduce Start -> L = R       
+8    | 0 Start 5                                | $                            | accept                      
